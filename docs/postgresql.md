@@ -8,8 +8,11 @@
 - psql -U postgres
 - ALTER USER postgres WITH PASSWORD 'your_secure_password';
 - psql -d DATABASE_NAME -U USERNAME
-- \d (describe complete table)
-- \d TABLE_NAME (describe a table)
+- \d: describe complete table
+- \d TABLE_NAME: describe a table
+- \c DATABASE_NAME: Connect to database
+- \! clear: Clears the screen
+
 
 
 
