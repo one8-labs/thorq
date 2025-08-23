@@ -1642,6 +1642,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
 ]
