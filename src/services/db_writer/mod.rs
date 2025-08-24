@@ -17,7 +17,7 @@ pub async fn db_writer(
     sqlx::query!(
         r#"
         INSERT INTO jobs (
-            queue_id, type, payload, priority, status, run_at,
+            queue_id, job_type, payload, priority, status, run_at,
             inserted_at, updated_at, attempts, max_attempts,
             last_error, timeout_sec, idempotency_key, tenant_id
         )

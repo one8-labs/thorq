@@ -7,6 +7,7 @@ use chrono::{DateTime, Utc};
 use thorq::services::database::init_db_pool;
 use thorq::services::db_writer::db_writer;
 use thorq::controllers::queue_controller::create_queue;
+use thorq::services::worker::worker;
 use axum::{
     Json,
     extract::State, 
@@ -83,6 +84,12 @@ async fn add_queue_to_db(
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let env_path = Path::new(".env");
     from_path(env_path).expect("Failed to load .env file");
+
+   let worker_pool = init_db_pool().await?;
+
+    tokio::spawn(async move {
+        let _ = worker(worker_pool).await;
+    });
 
     let pool = init_db_pool().await?;
     let shared_pool = Arc::new(pool);
