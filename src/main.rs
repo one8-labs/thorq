@@ -5,7 +5,7 @@ use serde::Deserialize;
 use sqlx::{Pool, Postgres};
 use chrono::{DateTime, Utc};
 use thorq::services::database::init_db_pool;
-use thorq::services::db_writer::db_writer;
+use thorq::services::database::db_writer;
 use thorq::controllers::queue_controller::create_queue;
 use thorq::services::worker::worker;
 use axum::{
