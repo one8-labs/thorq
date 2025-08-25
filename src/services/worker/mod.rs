@@ -1,6 +1,9 @@
-// New arch for job workers
-
+/**
+    The workers help in execting the tasks based on the
+    given time at which the job should run.
+*/
 use std::time::Duration;
+use serde::Deserialize;
 use sqlx::PgPool;
 use chrono::{DateTime, Utc};
 use tokio::time;
@@ -52,6 +55,64 @@ async fn fetch_ready_jobs(pool: &PgPool, current_time: DateTime<Utc>) -> Result<
     Ok(jobs)
 }
 
+#[derive(Debug, Deserialize)]
+struct ApiCallPayload {
+    url: String,
+    method: String,
+    body: Option<serde_json::Value>
+}
+
+async fn perform_api_call(payload: &ApiCallPayload) -> Result<(), Box<dyn std::error::Error>> {
+    print!("Handling API call for {}", payload.url);
+    let client = reqwest::Client::new();
+    let response = match payload.method.to_uppercase().as_str() {
+        "POST" => {
+            let mut request = client.post(&payload.url);
+            if let Some(body) = &payload.body {
+                request = request.json(body);
+            }
+            request.send().await?
+        },
+        "GET" => {
+            client.get(&payload.url).send().await?
+        },
+        _ => {
+            return Err("Unsupported HTTP method".into());
+        }
+    };
+
+    println!("API call response status: {}", response.status());
+
+    let response_text = response.text().await?;
+    println!("Response Body: {}", response_text);
+
+    Ok(())
+}
+
+async fn process_job(job: Job) {
+    match job.job_type.as_str() {
+        "api_call" => {
+            match serde_json::from_value::<ApiCallPayload>(job.payload) {
+                Ok(api_call_payload) => {
+                    if let Err(e) = perform_api_call(&api_call_payload).await {
+                        eprintln!("Error handling API call: {}", e);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("Failed to deserialize API call payload: {}", e);
+                }
+            }
+        },
+        "function_call" => {
+            println!("Function call job type is not yet implemented.");
+        },
+        _ => {
+            eprintln!("Unknown job type: {}", job.job_type);
+        }
+    }
+
+}
+
 pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
     println!("⚙️ Worker started");
     
@@ -63,6 +124,7 @@ pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
     
         for job in jobs {
             println!("{:?}", job);
+            process_job(job).await;
         }
 
         time::sleep(sleep_duration).await;
