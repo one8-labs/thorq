@@ -6,8 +6,9 @@ use std::time::Duration;
 use serde::Deserialize;
 use sqlx::PgPool;
 use chrono::{DateTime, Utc};
-use tokio::time;
+use tokio::{sync::Semaphore, time};
 use crate::models::Job;
+use std::sync::Arc;
 
 async fn fetch_ready_jobs(pool: &PgPool, current_time: DateTime<Utc>) -> Result<Vec<Job>, sqlx::Error> {
 
@@ -115,8 +116,11 @@ async fn process_job(job: Job) {
 
 pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
     println!("⚙️ Worker started");
+    const CONCURRENCY_LIMIT: usize = 100;
     
     let sleep_duration = Duration::from_secs(1);
+    let semaphore = Arc::new(Semaphore::new(CONCURRENCY_LIMIT));
+
 
     loop {
         let current_time = Utc::now();
@@ -124,7 +128,12 @@ pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
     
         for job in jobs {
             println!("{:?}", job);
-            process_job(job).await;
+            let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
+
+            tokio::spawn(async move {
+                let _permit = permit;
+                process_job(job).await;
+            });
         }
 
         time::sleep(sleep_duration).await;
