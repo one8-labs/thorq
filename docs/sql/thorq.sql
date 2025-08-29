@@ -10,7 +10,7 @@ CREATE TABLE queues (
 CREATE TABLE jobs (
     id               BIGSERIAL PRIMARY KEY,
     queue_id         BIGINT NOT NULL REFERENCES queues(id) ON DELETE RESTRICT,
-    type             TEXT NOT NULL,                          
+    job_type             TEXT NOT NULL,                          
     payload          JSONB NOT NULL,                         
     priority         INT NOT NULL DEFAULT 0,                 
     status           TEXT NOT NULL DEFAULT 'pending',        
