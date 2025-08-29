@@ -63,7 +63,7 @@ struct ApiCallPayload {
     body: Option<serde_json::Value>
 }
 
-async fn perform_api_call(payload: &ApiCallPayload) -> Result<(), Box<dyn std::error::Error>> {
+async fn perform_api_call(payload: &ApiCallPayload) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     print!("Handling API call for {}", payload.url);
     let client = reqwest::Client::new();
     let response = match payload.method.to_uppercase().as_str() {
@@ -78,7 +78,7 @@ async fn perform_api_call(payload: &ApiCallPayload) -> Result<(), Box<dyn std::e
             client.get(&payload.url).send().await?
         },
         _ => {
-            return Err("Unsupported HTTP method".into());
+            return Err(Box::<dyn std::error::Error + Send + Sync>::from("Unsupported HTTP method"));
         }
     };
 
@@ -90,17 +90,46 @@ async fn perform_api_call(payload: &ApiCallPayload) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
-async fn process_job(job: Job) {
+async fn update_job_status(pool: &PgPool, job_id: i64, status: &str) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        r#"
+            UPDATE jobs
+            SET status = $1, updated_at = NOW()
+            WHERE id = $2
+        "#,
+        status,
+        job_id
+    )
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+async fn process_job(pool: Arc<PgPool>, job: Job) {
     match job.job_type.as_str() {
         "api_call" => {
             match serde_json::from_value::<ApiCallPayload>(job.payload) {
                 Ok(api_call_payload) => {
-                    if let Err(e) = perform_api_call(&api_call_payload).await {
-                        eprintln!("Error handling API call: {}", e);
+                    match perform_api_call(&api_call_payload).await {
+                        Ok(_) => {
+                            if let Err(e) = update_job_status(&pool, job.id, "executed").await {
+                                eprintln!("Failed to update job status: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Error handling API call: {}", e);
+                            if let Err(e) = update_job_status(&pool, job.id, "failed").await {
+                                eprintln!("Failed to mark job as failed: {}", e);
+
+                            }
+                        }
                     }
                 },
                 Err(e) => {
                     eprintln!("Failed to deserialize API call payload: {}", e);
+                    if let Err(e) = update_job_status(&pool, job.id, "failed").await {
+                        eprintln!("Failed to mark job as failed: {}", e);
+                    }
                 }
             }
         },
@@ -111,7 +140,6 @@ async fn process_job(job: Job) {
             eprintln!("Unknown job type: {}", job.job_type);
         }
     }
-
 }
 
 pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
@@ -120,6 +148,7 @@ pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
     
     let sleep_duration = Duration::from_secs(1);
     let semaphore = Arc::new(Semaphore::new(CONCURRENCY_LIMIT));
+    let pool = Arc::new(pool);
 
 
     loop {
@@ -129,10 +158,11 @@ pub async fn worker(pool: PgPool) -> Result<(), sqlx::Error> {
         for job in jobs {
             println!("{:?}", job);
             let permit = Arc::clone(&semaphore).acquire_owned().await.unwrap();
+            let pool = Arc::clone(&pool);
 
             tokio::spawn(async move {
                 let _permit = permit;
-                process_job(job).await;
+                process_job(pool, job).await;
             });
         }
 
