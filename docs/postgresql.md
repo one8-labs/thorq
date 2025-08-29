@@ -14,6 +14,14 @@
 - \! clear: Clears the screen
 
 
+`PostgreSQL commands in macos`
+
+- psql postgres
+- CREATE ROLE postgres WITH LOGIN PASSWORD 'postgres';
+- ALTER ROLE postgres WITH SUPERUSER;
+
+
+
 
 
 `sqlx`
