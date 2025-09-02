@@ -9,3 +9,4 @@ Below functionalities are supported based on the specified time:
 - API calling
 - Function Calling (node & python)
 
+For setting up the project locally, you can follow the [setup](/docs/setup.md) instructions.

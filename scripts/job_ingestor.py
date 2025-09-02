@@ -67,5 +67,5 @@ def create_function_call_mocks(num_jobs: int):
 
 
 if __name__ == "__main__":
-    # create_api_call_mocks(100)
-    create_function_call_mocks(10)
+    create_api_call_mocks(1000)
+    create_function_call_mocks(1000)
