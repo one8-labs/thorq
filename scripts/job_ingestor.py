@@ -2,9 +2,9 @@ import requests
 import time
 from datetime import datetime, timedelta, timezone
 
-def get_current_time_plus_two_minutes():
+def get_current_time_plus_minutes():
     current_time = datetime.now(timezone.utc)
-    new_time = current_time + timedelta(minutes=2)
+    new_time = current_time + timedelta(minutes=1)
     return new_time.isoformat().replace("+00:00", "Z")
 
 url = "http://localhost:3000/create-job"
@@ -26,7 +26,7 @@ def create_api_call_mocks(num_jobs: int):
             "timeout_sec": 60,
             "idempotency_key": idempotency_key,
             "tenant_id": "tenant_123",
-            "run_at": get_current_time_plus_two_minutes()
+            "run_at": get_current_time_plus_minutes()
         }
 
         try:
@@ -55,7 +55,7 @@ def create_function_call_mocks(num_jobs: int):
             "imeout_sec": 60,
             "idempotency_key": idempotency_key,
             "tenant_id": "tenant_123",
-            "run_at": get_current_time_plus_two_minutes()
+            "run_at": get_current_time_plus_minutes()
         }
 
         try:
@@ -68,4 +68,4 @@ def create_function_call_mocks(num_jobs: int):
 
 if __name__ == "__main__":
     # create_api_call_mocks(100)
-    create_function_call_mocks(500)
+    create_function_call_mocks(10)

@@ -141,7 +141,6 @@ fn unique_filename(extension: &str) -> String {
     format!("job_{}.{}", nanos, extension)
 }
 
-
 async fn process_job(pool: Arc<PgPool>, job: Job) {
     match job.job_type.as_str() {
         "api_call" => {
@@ -189,7 +188,22 @@ async fn process_job(pool: Arc<PgPool>, job: Job) {
             };
         },
         "js_fn_call" => {
-            print!("Function call for nodejs ")
+            if let Some(code) = job.payload.as_str() {
+                let file_name = unique_filename("js");
+                
+                match perform_fn_call("node", code, &file_name).await {
+                    Ok(result) => {
+                        println!("Node execution result: {}", result);
+                        let _ = update_job_status(&pool, job.id, "executed").await;
+                    }
+                    Err(e) => {
+                        eprintln!("Node execution failed: {}", e);
+                        let _ = update_job_status(&pool, job.id, "failed").await;
+                    }
+                }
+            } else {
+                eprintln!("Payload was not a string for job {}", job.id);
+            };
         }
         _ => {
             eprintln!("Unknown job type: {}", job.job_type);
