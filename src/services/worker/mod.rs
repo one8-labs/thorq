@@ -4,7 +4,7 @@
 */
 use std::{process::Stdio, time::Duration};
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use sqlx::PgPool;
 use chrono::{DateTime, Utc};
 use tokio::{sync::Semaphore, time};
@@ -122,6 +122,9 @@ async fn perform_fn_call(interpreter: &str, code: &str, file_name: &str) -> Resu
         .await
         .map_err(|e| format!("Failed to run {}: {}",interpreter, e))?;
 
+    if let Err(e) = tokio::fs::remove_file(&tmp_file).await {
+        eprintln!("Warning: failed to remove temp file {}: {}", tmp_file, e);
+    }
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
