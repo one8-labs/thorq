@@ -2,13 +2,15 @@
     The workers help in execting the tasks based on the
     given time at which the job should run.
 */
-use std::time::Duration;
-use serde::Deserialize;
+use std::{process::Stdio, time::Duration};
+use std::time::{SystemTime, UNIX_EPOCH};
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use chrono::{DateTime, Utc};
 use tokio::{sync::Semaphore, time};
 use crate::models::Job;
 use std::sync::Arc;
+use tokio::process::Command;
 
 async fn fetch_ready_jobs(pool: &PgPool, current_time: DateTime<Utc>) -> Result<Vec<Job>, sqlx::Error> {
 
@@ -105,6 +107,38 @@ async fn update_job_status(pool: &PgPool, job_id: i64, status: &str) -> Result<(
     Ok(())
 }
 
+async fn perform_fn_call(interpreter: &str, code: &str, file_name: &str) -> Result<String, String>{
+    let tmp_file = format!("/tmp/{}", file_name);
+    
+    if let Err(e) = tokio::fs::write(&tmp_file, code).await {
+        return Err(format!("Failed to write code to file: {}", e));
+    }
+
+    let output = Command::new(interpreter)
+        .arg(&tmp_file)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run {}: {}",interpreter, e))?;
+
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(String::from_utf8_lossy(&output.stderr).to_string())
+    }
+}
+
+fn unique_filename(extension: &str) -> String {
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    format!("job_{}.{}", nanos, extension)
+}
+
+
 async fn process_job(pool: Arc<PgPool>, job: Job) {
     match job.job_type.as_str() {
         "api_call" => {
@@ -133,9 +167,27 @@ async fn process_job(pool: Arc<PgPool>, job: Job) {
                 }
             }
         },
-        "function_call" => {
-            println!("Function call job type is not yet implemented.");
+        "py_fn_call" => {
+            if let Some(code) = job.payload.as_str() {
+                let file_name = unique_filename("py");
+                
+                match perform_fn_call("python3", code, &file_name).await {
+                    Ok(result) => {
+                        println!("Python execution result: {}", result);
+                        let _ = update_job_status(&pool, job.id, "executed").await;
+                    }
+                    Err(e) => {
+                        eprintln!("Python execution failed: {}", e);
+                        let _ = update_job_status(&pool, job.id, "failed").await;
+                    }
+                }
+            } else {
+                eprintln!("Payload was not a string for job {}", job.id);
+            };
         },
+        "js_fn_call" => {
+            print!("Function call for nodejs ")
+        }
         _ => {
             eprintln!("Unknown job type: {}", job.job_type);
         }

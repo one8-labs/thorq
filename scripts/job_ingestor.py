@@ -1,7 +1,7 @@
 import requests
 import time
 
-def create_jobs(num_jobs: int):
+def create_api_call_mocks(num_jobs: int):
     url = "http://localhost:3000/create-job"
     headers = {"Content-Type": "application/json"}
 
@@ -30,7 +30,14 @@ def create_jobs(num_jobs: int):
         except requests.exceptions.RequestException as e:
             print(f"Job {i+1}/{num_jobs} failed: {e}")
 
-        time.sleep(0.01) 
+        time.sleep(0.01)
+
+def create_function_call_mocks(num_jobs: int):
+
+    for i in range(num_jobs):
+        py_fn = f"print('python function {i}')"
+        node_fn = f"console.log('node function {i}')"
 
 if __name__ == "__main__":
-    create_jobs(100)
+    # create_api_call_mocks(100)
+    create_function_call_mocks(100)
