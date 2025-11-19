@@ -12,6 +12,8 @@
 - \d TABLE_NAME: describe a table
 - \c DATABASE_NAME: Connect to database
 - \! clear: Clears the screen
+- CREATE USER app_user WITH PASSWORD 'secure_password';
+- GRANT ALL PRIVILEGES ON DATABASE your_database TO app_user;
 
 
 `PostgreSQL commands in macos`
