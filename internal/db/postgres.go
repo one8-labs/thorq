@@ -2,7 +2,6 @@ package db
 
 import (
 	"app/internal/config"
-	"app/internal/models"
 	"errors"
 	"log"
 	"time"
@@ -52,11 +51,11 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetConnMaxIdleTime(30 * time.Minute)
 
 	// Auto-migrate only in dev
-	if cfg.Env != "prod" {
-		if err := db.AutoMigrate(&models.User{}); err != nil {
-			return nil, err
-		}
-	}
+	// if cfg.Env != "prod" {
+	// 	if err := db.AutoMigrate(&models.Queue{}, &models.Job{}); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
 
 	return db, nil
 }
