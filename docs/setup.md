@@ -5,7 +5,7 @@
 - Create database called thorq
 - Create database tables by executing the [sql](/docs/sql/thorq.sql)
 - You can make use of the job_ingestion script from the scripts folder to ingest the jobs data.
-- Run the project `cargo run`
+- Run the project `go run ./cmd/thorq`
 - Create queue
     ```
     curl -X POST http://localhost:3000/create-queue \
