@@ -16,7 +16,7 @@ type CreateQueueRequest struct {
 }
 
 func Register(r *gin.Engine, db *gorm.DB) {
-	r.POST("/queues", func(c *gin.Context) {
+	r.POST("/create-queue", func(c *gin.Context) {
 		var req CreateQueueRequest
 
 		if err := c.ShouldBindJSON(&req); err != nil {
